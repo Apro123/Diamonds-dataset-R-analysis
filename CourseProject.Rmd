@@ -1,0 +1,337 @@
+---
+title: "Math 32 Course Project"
+author: "Armaan Kapoor"
+date: "November 26, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(plotly)
+library(MASS)
+```
+
+# Introduction
+
+My dataset is called "diamonds.csv". It is adopted from https://www.kaggle.com/shivam2503/diamonds. This is a classical dataset that contains data on about 53940 diamonds with 10 different variables, with one of them being price.
+
+## Purpose
+
+The main goal of this project is to use the data to ultimately devise a model (albeit a best-fit line or model) that can be used to determine the price of a diamond based on the other 9 variables.
+
+### Side Goal
+
+I also want to conjure up other analytical data, such as correlation, between other variables beside the price. For example, I will show the correlation between clarity and carat of a diamond, to show how a high number of one variable may correlate to a high number of the other variable. Ultimately, I hope to use this project to showcase all my R and data analytical skills I learned in Math 32.
+
+# Data Analysis
+
+## Holistic Look
+
+With the code below, can see the first couple of values with the head() function and the columns. With the summary() function I get satistics about each column in the data set.
+
+What each column is:
+1. Carat = Carat weight of the diamond
+2. Cut = Cut quality of the diamond
+3. Color = Color of the diamond. D being the best and J as the worst
+4. Depth = Depth percentage: The height of a diamond, measured from the culet to the table, divided by its average girdle diameter
+5. Table = table percentage: The width of the diamond's table expressed as a percentage of its average diameter
+6. Price = Price of the diamond
+7. X = Length mm
+8. Y = Width mm
+9. Z = Depth mm
+
+```{r}
+diamonds = read.csv(file="diamonds.csv", header=TRUE, sep = ",")
+
+head(diamonds)
+
+
+```
+
+The summary() command produces an output similar to the table() function on those columns that are not numeric. The ones that are calculates the Minimum, 1st Quartile, Median, Mean, 3rd Quartile, and Maximum.
+
+```{r}
+summary(diamonds)
+```
+
+## Priming the dataset
+
+Now it is necessary to see if all the numeric data is actually numeric. This is done in the below chunk by running the command is.numeric() on each of the columns that are supposed to contain all the numbers.
+
+```{r results="hide"}
+carat <- sapply(diamonds$carat, is.numeric)
+table(carat) #returned all 53940 are TRUE
+#Because all are numeric, we must turn all values to numbers
+diamonds$carat <- sapply(diamonds$carat, as.numeric)
+head(diamonds$carat)
+
+depth <- sapply(diamonds$depth, is.numeric)
+table(depth) #returned all 53940 are TRUE
+#Because all are numeric, we must turn all values to numbers
+diamonds$depth <- sapply(diamonds$depth, as.numeric)
+head(diamonds$depth)
+
+tab <- sapply(diamonds$table, is.numeric)
+table(tab) #returned all 53940 are TRUE
+#Because all are numeric, we must turn all values to numbers
+diamonds$tab <- sapply(diamonds$table, as.numeric)
+head(diamonds$tab)
+
+price <- sapply(diamonds$price, is.numeric)
+table(price) #returned all 53940 are TRUE
+#Because all are numeric, we must turn all values to numbers
+diamonds$price <- sapply(diamonds$price, as.numeric)
+head(diamonds$price)
+
+x <- sapply(diamonds$x, is.numeric)
+table(x) #returned all 53940 are TRUE
+#Because all are numeric, we must turn all values to numbers
+diamonds$x <- sapply(diamonds$x, as.numeric)
+head(diamonds$x)
+
+y <- sapply(diamonds$y, is.numeric)
+table(y) #returned all 53940 are TRUE
+#Because all are numeric, we must turn all values to numbers
+diamonds$y <- sapply(diamonds$y, as.numeric)
+head(diamonds$y)
+
+z <- sapply(diamonds$z, is.numeric)
+table(z) #returned all 53940 are TRUE
+#Because all are numeric, we must turn all values to numbers
+diamonds$z <- sapply(diamonds$z, as.numeric)
+head(diamonds$z)
+
+```
+
+### A Side note:
+
+We have three variables X, Y, Z. Looking at them individually is a solution but what would be more helpful if they were looked as one variable, a combination of X, Y, and Z, which would be X*Y*Z, also known as the volume.
+
+```{r}
+diamonds$volume = diamonds$x*diamonds$y*diamonds$z
+
+head(diamonds)
+```
+
+## Correlation Between Numeric Variables and Price
+
+Here I simply plotted each of the main variables including volume and excluding x, y, and z, against the price column. The purpose of this is to get an overview of the data and determine any easily-recognized patterns. Due to an overlap in points on the scatter plot it is hard to determine whether a blot of points represents 10 points or 10000 points, thus a 3d representation of the density of the plot is also shown after each corresponding graph.
+
+```{r}
+plot(diamonds$carat, diamonds$price, main = "Carat Related to Price", xlab="Carat",ylab="Price")
+
+kd <- with(diamonds, MASS::kde2d(diamonds$carat, diamonds$price, n = 50))
+plot_ly(x = kd$x, y = kd$y, z = kd$z) %>% add_surface()
+
+plot(diamonds$depth, diamonds$price, main = "Depth Related to Price", xlab="Depth",ylab="Price")
+
+kd <- with(diamonds, MASS::kde2d(diamonds$depth, diamonds$price, n = 50))
+plot_ly(x = kd$x, y = kd$y, z = kd$z) %>% add_surface()
+
+plot(diamonds$table, diamonds$price, main = "Table Related to Price", xlab="Table",ylab="Price")
+
+kd <- with(diamonds, MASS::kde2d(diamonds$table, diamonds$price, n = 50))
+plot_ly(x = kd$x, y = kd$y, z = kd$z) %>% add_surface()
+
+plot(diamonds$volume, diamonds$price, main = "Volume Related to Price", xlab="Volume",ylab="Price")
+
+kd <- with(diamonds, MASS::kde2d(diamonds$volume, diamonds$price, n = 50))
+plot_ly(x = kd$x, y = kd$y, z = kd$z) %>% add_surface()
+```
+
+## Correct for Outliers
+
+These following graphs are the same as above, except now they will correct for outliers that hinder the overview of the graphs. This is done by using a box and wisker plot to see where the outliers exist, then comes the process of removing the outliers. When we have identified the outliers, then the entire row is excluded from the data frame.
+
+```{r}
+library(gridExtra)
+outliers <- boxplot(diamonds$carat, main="Carat Weight of the Diamonds")$out
+diamonds <- diamonds[-which(diamonds$carat %in% outliers),]
+boxplot(diamonds$carat, main="Carat Weight After Outliers removed")
+
+outliers <- boxplot(diamonds$depth, main="Depth of the Diamonds")$out
+diamonds <- diamonds[-which(diamonds$depth %in% outliers),]
+boxplot(diamonds$depth, main="Depth After Outliers removed")
+
+outliers <- boxplot(diamonds$table, main="Table of the Diamonds")$out
+diamonds <- diamonds[-which(diamonds$table %in% outliers),]
+boxplot(diamonds$table, main="Table After Outliers removed")
+
+outliers <- boxplot(diamonds$volume, main="Volume of the Diamonds")$out
+diamonds <- diamonds[-which(diamonds$volume %in% outliers),]
+boxplot(diamonds$volume, main="Volume After Outliers removed")
+
+```
+
+## Plot Above Variables against Price
+
+Now plotting against price will show any obvious relations/correlation between the variables. Then, a type of regression can be assigned. Note that these plots also come with corresponding 3d density plots same as before.
+
+```{r}
+plot(diamonds$carat, diamonds$price, main = "Carat Related to Price REVISED", xlab="Carat",ylab="Price")
+
+kd <- with(diamonds, MASS::kde2d(diamonds$carat, diamonds$price, n = 50))
+plot_ly(x = kd$x, y = kd$y, z = kd$z) %>% add_surface()
+
+plot(diamonds$depth, diamonds$price, main = "Depth Related to Price REVISED", xlab="Depth",ylab="Price")
+
+kd <- with(diamonds, MASS::kde2d(diamonds$depth, diamonds$price, n = 50))
+plot_ly(x = kd$x, y = kd$y, z = kd$z) %>% add_surface()
+
+plot(diamonds$table, diamonds$price, main = "Table Related to Price REVISED", xlab="Table",ylab="Price")
+
+kd <- with(diamonds, MASS::kde2d(diamonds$table, diamonds$price, n = 50))
+plot_ly(x = kd$x, y = kd$y, z = kd$z) %>% add_surface()
+
+plot(diamonds$volume, diamonds$price, main = "Volume Related to Price REVISED", xlab="Volume",ylab="Price")
+
+kd <- with(diamonds, MASS::kde2d(diamonds$volume, diamonds$price, n = 50))
+plot_ly(x = kd$x, y = kd$y, z = kd$z) %>% add_surface()
+```
+
+# Analysis
+
+Now since the dataset has been primed, conducting simple linear regressions and determining relative correlations on the data set can help us get close to the main goal of this project.
+
+## Linear Regression of Variables
+
+The below r script will compute and print out the summary as well as the graph of each linear model formed by all the combinations of the four variables: carat, depth, table, and volume, with price
+
+```{r}
+#CARAT vs PRICE
+caratlm <- lm(diamonds$price ~ diamonds$carat)
+summary(caratlm)
+plot(diamonds$price ~ diamonds$carat, main = "Carat vs Price Linear Regression Model", xlab="Carat",ylab="Price")
+abline(caratlm, col="red")
+cat("EQUATION of the Line: y=", caratlm$coefficients[1], "+", caratlm$coefficients[2], "x")
+
+#DEPTH vs PRICE
+depthlm <- lm(diamonds$price ~ diamonds$depth)
+summary(depthlm)
+plot(diamonds$price ~ diamonds$depth, main = "Depth vs Price Linear Regression Model", xlab="Depth",ylab="Price")
+abline(depthlm, col="red")
+cat("EQUATION of the Line: y=", depthlm$coefficients[1], "+", depthlm$coefficients[2], "x")
+
+#TABLE vs PRICE
+tablelm <- lm(diamonds$price ~ diamonds$table)
+summary(tablelm)
+plot(diamonds$price ~ diamonds$table, main = "Table vs Price Linear Regression Model", xlab="Table",ylab="Price")
+abline(tablelm, col="red")
+cat("EQUATION of the Line: y=", tablelm$coefficients[1], "+", tablelm$coefficients[2], "x")
+
+#VOLUME vs PRICE
+volumelm <- lm(diamonds$price ~ diamonds$volume)
+summary(volumelm)
+plot(diamonds$price ~ diamonds$volume, main = "Volume vs Price Linear Regression Model", xlab="Volume",ylab="Price")
+abline(volumelm, col="red")
+cat("EQUATION of the Line: y=", volumelm$coefficients[1], "+", volumelm$coefficients[2], "x")
+
+```
+
+As it is clear that the table and the depth variables seem to have a random spread of data along with the really high errors and very small r^2 values and that these variables do not contribute much to the price of the diamonds. So, these variables would be dropped and their linear regression models are not going to be used.
+
+### Linear Regression of a Combination of Variables
+
+Now that only two NUMERICAL variables (carat and volume) are going to be used, it is possible to multiply these two variables together and be plotted along with their combined linear regression model.
+
+```{r}
+cVmodel <- lm(diamonds$price ~ diamonds$carat * diamonds$volume)
+x <- diamonds$carat * diamonds$volume
+summary(cVmodel)
+plot(diamonds$price ~ x, main = "Carat and Volume VS Price Linear Regression Model", xlab="Carat and Volume",ylab="Price")
+abline(lm(diamonds$price ~ x), col="red") # just for visual purposes
+
+cat("EQUATION of the Line: y =", cVmodel$coefficients[1], "+", cVmodel$coefficients[2], "c +", cVmodel$coefficients[3], "v +", cVmodel$coefficients[4], "cv", "\nwhere c = carat and v = volume")
+
+```
+
+The highest R^2 achieved in the previous plots was 0.8249 but with this model, we achieved a higher R^2 as 0.8434. This is some progress but including more variables would help with the model and increase the R^2 value.
+
+## Qualitative Correlation
+
+Of course, the data variables that are non-numerical should not be ruled out as one that does not make a big different in price. What the below R code does is calcuate the average of each non-numerical value against price and plots it in a bar graph
+
+```{r}
+means_cut <- sort(with(diamonds, tapply(price, cut, mean)))
+x<-barplot(means_cut,main="Mean Values of the Price with each Cut Variation", xlab="Cut Quality", ylab="Mean Prices")
+text(x,means_cut-210,labels=as.character(floor(means_cut)))
+
+means_color <- sort(with(diamonds, tapply(price, color, mean)))
+x<-barplot(means_color,main="Mean Values of the Price with each Color Variation", xlab="Color", ylab="Mean Prices")
+text(x,means_color-210,labels=as.character(floor(means_color)))
+
+means_clarity <- sort(with(diamonds, tapply(price, clarity, mean)))
+x<-barplot(means_clarity,main="Mean Values of the Price with each Clarity Variation", xlab="Clarity", ylab="Mean Prices")
+text(x,means_clarity-210,labels=as.character(floor(means_clarity)))
+```
+
+Since we see a clear increase in the average price for each different value in the non-numerical value. 
+
+### Ratio Calculation of Non-numerical variables
+
+Since we know that there is an effect of these variables on price, the ratio of each value against the lowest one can be caluculated and inputed within the current linear model of carat and volume. These ratios also be inputed in new columns in the diamonds data frame.
+
+```{r}
+means_cut <- means_cut/means_cut[1]
+means_color <- means_color/means_color[1]
+means_clarity <- means_clarity/means_clarity[1]
+
+diamonds$means_cut = means_cut[diamonds$cut]
+diamonds$means_color = means_color[diamonds$color]
+diamonds$means_clarity = means_clarity[diamonds$clarity]
+head(diamonds)
+```
+
+# Final Model and Conclusion
+
+Now that there are ratios for the non-numerical variables, it is possible to add it to our linear model of carat and volume to form a stronger linear model.
+
+```{r}
+finalModel <- lm(diamonds$price ~ diamonds$carat * diamonds$volume * diamonds$means_cut * diamonds$means_color * diamonds$means_clarity)
+x <- diamonds$carat * diamonds$volume * diamonds$means_cut * diamonds$means_color * diamonds$means_clarity
+summary(finalModel)
+plot(diamonds$price ~ x, main = "Final Linear Regression Model", xlab="Carat and Volume",ylab="Price")
+abline(lm(diamonds$price ~ x), col="red") # just for visual purposes
+
+cat("EQUATION of the Line: y =", finalModel$coefficients[1], "+", 
+    finalModel$coefficients[2], "c +", 
+    finalModel$coefficients[3], "v +", 
+    finalModel$coefficients[4], "u +", 
+    finalModel$coefficients[5], "o +", 
+    finalModel$coefficients[6], "a +", 
+    finalModel$coefficients[7], "cv + ",
+    finalModel$coefficients[8], "cu + ",
+    finalModel$coefficients[9], "vu + ",
+    finalModel$coefficients[10], "co + ",
+    finalModel$coefficients[11], "vo + ",
+    finalModel$coefficients[12], "uo + ",
+    finalModel$coefficients[13], "ca + ",
+    finalModel$coefficients[14], "va + ",
+    finalModel$coefficients[15], "ua + ",
+    finalModel$coefficients[16], "oa + ",
+    finalModel$coefficients[17], "cvu + ",
+    finalModel$coefficients[18], "cvo + ",
+    finalModel$coefficients[19], "cuo + ",
+    finalModel$coefficients[20], "vuo + ",
+    finalModel$coefficients[21], "cva + ",
+    finalModel$coefficients[22], "cua + ",
+    finalModel$coefficients[23], "vua + ",
+    finalModel$coefficients[24], "coa + ",
+    finalModel$coefficients[25], "voa + ",
+    finalModel$coefficients[26], "uoa + ",
+    finalModel$coefficients[27], "cvuo + ",
+    finalModel$coefficients[28], "cvua + ",
+    finalModel$coefficients[29], "cvoa + ",
+    finalModel$coefficients[30], "cuoa + ",
+    finalModel$coefficients[31], "vuoa + ",
+    finalModel$coefficients[32], "cvuoa",
+    "\nwhere c = carat and v = volume and u = means_cut and o = means_color and a = means_clarity")
+```
+
+# Conclusion
+
+With this final linear model calculated, the final R^2 value discovered is 0.9069 which is better than the original 0.8249 when carat was plotted against price alone. This model can be used to determine the price of a diamonds based on its individual characteristics within statistical significance due to the high R^2 value.
+
+## Future Analysis
+
+In the future, perhaps instead of doing a simple linear regression model, I can add more polynomial regressions to account for any devistions from the line as the x value grows faster than the lines. Also a machine learning model can be trained using this data (split into test and training data), which may be more useful and accurate with a series of convolutional layers.
